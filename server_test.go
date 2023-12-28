@@ -72,7 +72,7 @@ var _ = Describe("Server", func() {
 		}(localServer)
 
 		DeferCleanup(func() {
-			Expect(server.Close()).To(Succeed())
+			Expect(server.Shutdown(context.Background())).To(Succeed())
 		})
 
 		server = localServer

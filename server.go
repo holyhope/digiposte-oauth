@@ -1,6 +1,7 @@
 package digipoauth
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -148,8 +149,8 @@ func newManager(clientStore oauth2.ClientStore, setter digiconfig.Setter, loginM
 }
 
 // Close closes the server.
-func (s *Server) Close() error {
-	return s.server.Close() //nolint:wrapcheck
+func (s *Server) Shutdown(ctx context.Context) error {
+	return s.server.Shutdown(ctx) //nolint:wrapcheck
 }
 
 // Start starts the server.
