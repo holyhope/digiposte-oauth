@@ -38,13 +38,13 @@ type Server struct {
 }
 
 // StartServer starts a local webserver to receive the auth.
-func NewServer(setter digiconfig.Setter, loginMethod LoginMethod, logger *log.Logger) (*Server, error) {
+func NewServer(setter digiconfig.Setter, addr string, loginMethod LoginMethod, logger *log.Logger) (*Server, error) {
 	// client memory store
 	clientStore := store.NewClientStore()
 
 	manager := newManager(clientStore, setter, loginMethod)
 
-	listener, err := net.Listen("tcp", "localhost:0")
+	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, fmt.Errorf("listen: %w", err)
 	}

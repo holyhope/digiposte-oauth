@@ -56,6 +56,7 @@ var _ = Describe("Server", func() {
 
 		localServer, err := digipoauth.NewServer(
 			setter,
+			"", // Random port
 			digipoauth.LoginMethodFunc(loginMethod),
 			log.New(GinkgoWriter, "", log.Lmsgprefix),
 		)
