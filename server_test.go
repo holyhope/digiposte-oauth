@@ -56,14 +56,13 @@ var _ = Describe("Server", func() {
 
 		localServer, err := digipoauth.NewServer(
 			setter,
-			ClientID,
-			ClientSecret,
-			testServer.URL(),
 			digipoauth.LoginMethodFunc(loginMethod),
 			log.New(GinkgoWriter, "", log.Lmsgprefix),
 		)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(localServer).ToNot(BeNil())
+
+		Expect(localServer.RegisterUser(ClientID, ClientSecret, testServer.URL())).To(Succeed())
 
 		go func(server *digipoauth.Server) {
 			defer GinkgoRecover()
