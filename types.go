@@ -24,6 +24,7 @@ func (f OptionFunc) Apply(instance interface{}) error {
 	return f(instance)
 }
 
+// LoginMethod is the method to connect to digiposte.
 type LoginMethod interface {
 	Login(ctx context.Context, creds *Credentials) (*oauth2.Token, []*http.Cookie, error)
 }

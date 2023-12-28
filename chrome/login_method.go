@@ -37,10 +37,7 @@ type chromeMethod struct {
 var _ digioauth.LoginMethod = (*chromeMethod)(nil)
 
 // Login logs in to digiposte using chrome.
-func (c *chromeMethod) Login(
-	ctx context.Context,
-	creds *digioauth.Credentials,
-) (*oauth2.Token, []*http.Cookie, error) {
+func (c *chromeMethod) Login(ctx context.Context, creds *digioauth.Credentials) (*oauth2.Token, []*http.Cookie, error) {
 	independentChromeCtx, chrome, cancel, err := c.newChromeLogin(ctx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("new chrome login: %w", err)

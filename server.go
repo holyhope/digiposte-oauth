@@ -18,38 +18,29 @@ import (
 )
 
 const (
+	// AuthorizePath is the path to the authorize endpoint.
 	AuthorizePath = "/authorize"
-	TokenPath     = "/token"
+	// TokenPath is the path to the token endpoint.
+	TokenPath = "/token"
 
-	ReadTimeout  = 5 * time.Second
+	// ReadTimeout is the timeout for reading the request.
+	ReadTimeout = 5 * time.Second
+	// WriteTimeout is the timeout for writing the response.
 	WriteTimeout = 5 * time.Minute
 )
 
 // Server is a local web server for collecting auth.
 type Server struct {
-	server   *http.Server
-	listener net.Listener
-	manager  *manage.Manager
+	server      *http.Server
+	listener    net.Listener
+	manager     *manage.Manager
+	clientStore *store.ClientStore
 }
 
 // StartServer starts a local webserver to receive the auth.
-func NewServer(
-	setter digiconfig.Setter,
-	clientID, clientSecret, redirectURL string,
-	loginMethod LoginMethod,
-	logger *log.Logger,
-) (*Server, error) {
+func NewServer(setter digiconfig.Setter, loginMethod LoginMethod, logger *log.Logger) (*Server, error) {
 	// client memory store
 	clientStore := store.NewClientStore()
-	if err := clientStore.Set(clientID, &models.Client{
-		ID:     clientID,
-		Secret: clientSecret,
-		UserID: clientID,
-		Public: false,
-		Domain: redirectURL,
-	}); err != nil {
-		return nil, fmt.Errorf("set client: %w", err)
-	}
 
 	manager := newManager(clientStore, setter, loginMethod)
 
@@ -59,10 +50,26 @@ func NewServer(
 	}
 
 	return &Server{
-		server:   newServer(manager, listener, logger),
-		listener: listener,
-		manager:  manager,
+		server:      newServer(manager, listener, logger),
+		listener:    listener,
+		manager:     manager,
+		clientStore: clientStore,
 	}, nil
+}
+
+// RegisterUser adds a user to the server.
+func (s *Server) RegisterUser(clientID, clientSecret, redirectURL string) error {
+	if err := s.clientStore.Set(clientID, &models.Client{
+		ID:     clientID,
+		Secret: clientSecret,
+		UserID: clientID,
+		Public: false,
+		Domain: redirectURL,
+	}); err != nil {
+		return fmt.Errorf("set client: %w", err)
+	}
+
+	return nil
 }
 
 func newServer(manager oauth2.Manager, listener net.Listener, logger *log.Logger) *http.Server {
