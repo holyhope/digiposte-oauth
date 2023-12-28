@@ -1,5 +1,4 @@
 ---
-# Github Actions build for rclone
 # -*- compile-command: "yamllint -f parsable build.yml" -*-
 
 name: test
@@ -51,11 +50,7 @@ jobs:
           sudo apt-key export D38B4796 | sudo gpg --dearmour -o /etc/apt/trusted.gpg.d/chrome.gpg
           sudo apt-get install google-chrome-stable
 
-      - name: Test config package
-        run: go test -v ./... -ginkgo.v
-        working-directory: ./config
-  
-      - name: Test all other packages
+      - name: Test
         run: go test -v ./... -ginkgo.v
         env:
           DIGIPOSTE_URL: ${{ vars.DIGIPOSTE_URL }}
