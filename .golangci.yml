@@ -1,0 +1,37 @@
+# golangci-lint configuration options
+
+linters:
+  enable-all: true
+
+linters-settings:
+  depguard:
+    # Default: Only allow $gostd in all files.
+    rules:
+      # Name of a rule.
+      main:
+        files:
+        - "$all"
+        - "!$test"
+        list-mode: lax
+        allow:
+          - $gostd
+          - github.com/chromedp
+          - github.com/Davincible/chromedp-undetected
+          - github.com/go-oauth2/oauth2
+          - github.com/holyhope
+          - github.com/pquerna/otp
+
+      # Name of a rule.
+      tests:
+        files:
+          - "$test"
+        list-mode: lax
+        allow:
+          - $gostd
+          - github.com/holyhope
+          - github.com/onsi/ginkgo
+          - github.com/onsi/gomega
+
+  gomoddirectives:
+    # Allow local `replace` directives.
+    replace-local: true

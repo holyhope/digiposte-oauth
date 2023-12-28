@@ -1,0 +1,71 @@
+---
+# Github Actions build for rclone
+# -*- compile-command: "yamllint -f parsable build.yml" -*-
+
+name: test
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+  # Optional: allow read access to pull request. Use with `only-new-issues` option.
+  # pull-requests: read
+
+jobs:
+  golangci:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.19'
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          install-mode: "binary"
+          version: v1.55
+          args: --timeout=30m
+
+  tests:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.19'
+
+      - name: Install Chrome
+        run: |
+          set -ex
+          sudo sh -c 'echo "deb [arch=amd64] https://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list'
+          wget -O- https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo tee /etc/apt/trusted.gpg.d/linux_signing_key.pub
+          sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 78BD65473CB3BD13
+          sudo apt-get update
+          sudo apt-key export D38B4796 | sudo gpg --dearmour -o /etc/apt/trusted.gpg.d/chrome.gpg
+          sudo apt-get install google-chrome-stable
+
+      - name: Test config package
+        run: go test -v ./... -ginkgo.v
+        working-directory: ./config
+  
+      - name: Test all other packages
+        run: go test -v ./... -ginkgo.v
+        env:
+          DIGIPOSTE_URL: ${{ vars.DIGIPOSTE_URL }}
+          DIGIPOSTE_USERNAME: ${{ secrets.DIGIPOSTE_USERNAME }}
+          DIGIPOSTE_PASSWORD: ${{ secrets.DIGIPOSTE_PASSWORD }}
+          DIGIPOSTE_OTP_SECRET: ${{ secrets.DIGIPOSTE_OTP_SECRET }}
+
+      - name: Get debug screenshots
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: screenshots
+          path: '**/*.png'
