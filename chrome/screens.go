@@ -44,14 +44,14 @@ func (s *Screens) Resolve(ctx context.Context) {
 		go func(ctx context.Context, screen Screen) {
 			defer waitGroup.Done()
 
-			s.resolve(ctx, screen)
+			s.run(ctx, screen)
 		}(ctx, screen)
 	}
 
 	waitGroup.Wait()
 }
 
-func (s *Screens) resolve(ctx context.Context, screen Screen) {
+func (s *Screens) run(ctx context.Context, screen Screen) {
 	refreshFrequency := time.NewTicker(s.refreshFrequency)
 	defer refreshFrequency.Stop()
 
@@ -64,32 +64,33 @@ func (s *Screens) resolve(ctx context.Context, screen Screen) {
 			return
 
 		case <-refreshFrequency.C:
-			func(ctx context.Context) {
-				ctx, cancel := context.WithTimeout(ctx, s.refreshFrequency)
-				defer cancel()
+			if !screen.CurrentPageMatches(ctx) {
+				continue
+			}
 
-				if screen.CurrentPageMatches(ctx) {
-					infoLogger(ctx).Println("Resolving screen...")
+			ctx, cancel := context.WithTimeout(ctx, s.refreshFrequency)
 
-					if err := resolve(ctx, screen); err != nil {
-						if !errors.Is(err, context.DeadlineExceeded) {
-							errorLogger(ctx).Printf("Failed to run in chrome: %v\n", err)
-						} else {
-							infoLogger(ctx).Printf("Screen failed: %v\n", err)
-						}
+			infoLogger(ctx).Println("Resolving screen...")
 
-						return
-					}
+			err := resolve(ctx, screen)
 
-					infoLogger(ctx).Println("Screen passed")
+			cancel()
+
+			if err != nil {
+				if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+					infoLogger(ctx).Printf("Screen failed: %v\n", err)
+
+					continue
 				}
-			}(ctx)
+
+				errorLogger(ctx).Printf("Failed to run in chrome: %v\n", err)
+
+				continue
+			}
+
+			infoLogger(ctx).Println("Screen passed")
 		}
 	}
-}
-
-func (s *Screens) Succeeded() bool {
-	return s.succeeded.Load()
 }
 
 func resolve(ctx context.Context, screen Screen) error {
@@ -114,4 +115,8 @@ func resolve(ctx context.Context, screen Screen) error {
 	}
 
 	return nil
+}
+
+func (s *Screens) Succeeded() bool {
+	return s.succeeded.Load()
 }
