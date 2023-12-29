@@ -115,6 +115,7 @@ func newServer(manager oauth2.Manager, config *server.Config, listener net.Liste
 
 	httpServer := &http.Server{
 		Addr:              listener.Addr().String(),
+		ErrorLog:          logger,
 		Handler:           mux,
 		ReadHeaderTimeout: ReadTimeout,
 		ReadTimeout:       ReadTimeout,
@@ -126,7 +127,6 @@ func newServer(manager oauth2.Manager, config *server.Config, listener net.Liste
 		BaseContext:    nil,
 		TLSNextProto:   nil,
 		ConnState:      nil,
-		ErrorLog:       nil,
 		ConnContext:    nil,
 	}
 
