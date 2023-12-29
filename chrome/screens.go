@@ -72,10 +72,10 @@ func (s *Screens) resolve(ctx context.Context, screen Screen) {
 					infoLogger(ctx).Println("Resolving screen...")
 
 					if err := resolve(ctx, screen); err != nil {
-						if !errors.Is(err, context.DeadlineExceeded) {
-							errorLogger(ctx).Printf("Failed to run in chrome: %v\n", err)
-						} else {
+						if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 							infoLogger(ctx).Printf("Screen failed: %v\n", err)
+						} else {
+							errorLogger(ctx).Printf("Failed to run in chrome: %v\n", err)
 						}
 
 						return
