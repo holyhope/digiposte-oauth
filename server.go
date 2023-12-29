@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/go-oauth2/oauth2/v4"
@@ -32,10 +33,11 @@ const (
 
 // Server is a local web server for collecting auth.
 type Server struct {
-	server      *http.Server
-	listener    net.Listener
-	manager     *manage.Manager
-	clientStore *store.ClientStore
+	server          *http.Server
+	listener        net.Listener
+	manager         *manage.Manager
+	clientStore     *store.ClientStore
+	accessGenerator *AccessGenerator
 }
 
 type Config struct {
@@ -50,7 +52,13 @@ func NewServer(setter digiconfig.Setter, config *Config) (*Server, error) {
 	// client memory store
 	clientStore := store.NewClientStore()
 
-	manager := newManager(clientStore, setter, config.LoginMethod)
+	accessGenerator := &AccessGenerator{
+		setter:      setter,
+		loginMethod: config.LoginMethod,
+		credentials: &sync.Map{},
+	}
+
+	manager := newManager(clientStore, accessGenerator)
 
 	listener, err := net.Listen("tcp", config.Addr)
 	if err != nil {
@@ -58,15 +66,16 @@ func NewServer(setter digiconfig.Setter, config *Config) (*Server, error) {
 	}
 
 	return &Server{
-		server:      newServer(manager, config.Server, listener, config.Logger),
-		listener:    listener,
-		manager:     manager,
-		clientStore: clientStore,
+		server:          newServer(manager, config.Server, listener, config.Logger),
+		listener:        listener,
+		manager:         manager,
+		clientStore:     clientStore,
+		accessGenerator: accessGenerator,
 	}, nil
 }
 
 // RegisterUser adds a user to the server.
-func (s *Server) RegisterUser(clientID, clientSecret, redirectURL string) error {
+func (s *Server) RegisterUser(clientID, clientSecret, redirectURL, username, password, otpSecret string) error {
 	if err := s.clientStore.Set(clientID, &models.Client{
 		ID:     clientID,
 		Secret: clientSecret,
@@ -76,6 +85,12 @@ func (s *Server) RegisterUser(clientID, clientSecret, redirectURL string) error 
 	}); err != nil {
 		return fmt.Errorf("set client: %w", err)
 	}
+
+	s.accessGenerator.SetCredentials(clientID, &Credentials{
+		Username:  username,
+		Password:  password,
+		OTPSecret: otpSecret,
+	})
 
 	return nil
 }
@@ -133,16 +148,12 @@ func newServer(manager oauth2.Manager, config *server.Config, listener net.Liste
 	return httpServer
 }
 
-func newManager(clientStore oauth2.ClientStore, setter digiconfig.Setter, loginMethod LoginMethod) *manage.Manager {
+func newManager(cs oauth2.ClientStore, ag oauth2.AccessGenerate) *manage.Manager {
 	manager := manage.NewDefaultManager()
 
 	manager.MustTokenStorage(store.NewMemoryTokenStore())
-
-	manager.MapClientStorage(clientStore)
-	manager.MapAccessGenerate(&AccessGenerator{
-		setter: setter,
-		login:  loginMethod,
-	})
+	manager.MapClientStorage(cs)
+	manager.MapAccessGenerate(ag)
 	manager.SetRefreshTokenCfg(&manage.RefreshingConfig{
 		AccessTokenExp:     time.Hour,
 		IsGenerateRefresh:  true,

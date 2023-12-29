@@ -7,45 +7,37 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net/http"
+	"sync"
 
 	oauth2v4 "github.com/go-oauth2/oauth2/v4"
 	digiconfig "github.com/holyhope/digiposte-oauth/config"
+	"golang.org/x/oauth2"
 )
-
-const OTPQueryParam = "otp_secret"
 
 // AccessGenerator is an oauth2.AccessGenerate that uses a LoginMethod to generate the access token.
 type AccessGenerator struct {
-	setter digiconfig.Setter
-	login  LoginMethod
+	setter      digiconfig.Setter
+	loginMethod LoginMethod
+	credentials *sync.Map
 }
 
 var _ oauth2v4.AccessGenerate = (*AccessGenerator)(nil)
 
 const RefreshTokenLength = 32
 
+func (ag *AccessGenerator) SetCredentials(clientID string, creds *Credentials) {
+	ag.credentials.Store(clientID, creds)
+}
+
 func (ag *AccessGenerator) Token(
 	ctx context.Context,
 	generateBasic *oauth2v4.GenerateBasic,
 	isGenRefresh bool,
 ) (string, string, error) {
-	if err := generateBasic.Request.ParseForm(); err != nil {
-		return "", "", fmt.Errorf("parse form: %w", err)
-	}
-
-	creds := &Credentials{
-		Username:  generateBasic.Client.GetID(),
-		Password:  generateBasic.Client.GetSecret(),
-		OTPSecret: generateBasic.Request.Form.Get(OTPQueryParam),
-	}
-
-	if err := areCredentialsValid(creds); err != nil {
-		return "", "", fmt.Errorf("invalid credentials: %w", err)
-	}
-
-	digiposteToken, cookies, err := ag.login.Login(ctx, creds)
+	digiposteToken, cookies, err := ag.login(ctx, generateBasic)
 	if err != nil {
-		return "", "", fmt.Errorf("using chrome: %w", err)
+		return "", "", fmt.Errorf("login: %w", err)
 	}
 
 	if err := digiconfig.SetCookies(ag.setter, cookies); err != nil {
@@ -75,6 +67,41 @@ func (ag *AccessGenerator) Token(
 	}
 
 	return digiposteToken.AccessToken, digiposteToken.RefreshToken, nil
+}
+
+func (ag *AccessGenerator) login(
+	ctx context.Context,
+	generateBasic *oauth2v4.GenerateBasic,
+) (*oauth2.Token, []*http.Cookie, error) {
+	var creds *Credentials
+
+	if value, ok := ag.credentials.Load(generateBasic.Client.GetID()); ok {
+		value, ok := value.(*Credentials)
+		if !ok {
+			return nil, nil, &InvalidCredentialsError{value: value}
+		}
+
+		creds = value
+	}
+
+	if err := areCredentialsValid(creds); err != nil {
+		return nil, nil, fmt.Errorf("invalid credentials: %w", err)
+	}
+
+	digiposteToken, cookies, err := ag.loginMethod.Login(ctx, creds)
+	if err != nil {
+		return nil, nil, fmt.Errorf("using %v: %w", ag.loginMethod, err)
+	}
+
+	return digiposteToken, cookies, nil
+}
+
+type InvalidCredentialsError struct {
+	value interface{}
+}
+
+func (e *InvalidCredentialsError) Error() string {
+	return fmt.Sprintf("invalid credentials: got %T expected *Credentials", e.value)
 }
 
 var ErrNilCredentials = errors.New("nil credentials")

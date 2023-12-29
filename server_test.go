@@ -20,6 +20,9 @@ import (
 const (
 	ClientID     = "client-id"
 	ClientSecret = "client-secret"
+	Username     = "username"
+	Password     = "password"
+	OTPSecret    = "otp-secret"
 )
 
 var _ = Describe("Server", func() {
@@ -42,6 +45,12 @@ var _ = Describe("Server", func() {
 		}
 
 		loginMethod := func(ctx context.Context, creds *digipoauth.Credentials) (*oauth2.Token, []*http.Cookie, error) {
+			Expect(creds).To(Equal(&digipoauth.Credentials{
+				Username:  Username,
+				Password:  Password,
+				OTPSecret: OTPSecret,
+			}))
+
 			return &oauth2.Token{
 					AccessToken:  "access-token",
 					TokenType:    "token-type",
@@ -67,7 +76,10 @@ var _ = Describe("Server", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(localServer).ToNot(BeNil())
 
-		Expect(localServer.RegisterUser(ClientID, ClientSecret, testServer.URL())).To(Succeed())
+		Expect(localServer.RegisterUser(
+			ClientID, ClientSecret, testServer.URL(),
+			Username, Password, OTPSecret,
+		)).To(Succeed())
 
 		go func(server *digipoauth.Server) {
 			defer GinkgoRecover()
