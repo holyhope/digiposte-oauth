@@ -17,7 +17,7 @@ linters-settings:
           - $gostd
           - github.com/chromedp
           - github.com/Davincible/chromedp-undetected
-          - github.com/go-oauth2/oauth2
+          - github.com/go-oauth2/oauth2/v4
           - github.com/holyhope
           - github.com/pquerna/otp
 
@@ -31,6 +31,7 @@ linters-settings:
           - github.com/holyhope
           - github.com/onsi/ginkgo
           - github.com/onsi/gomega
+          - github.com/go-oauth2/oauth2/v4
 
   gomoddirectives:
     # Allow local `replace` directives.

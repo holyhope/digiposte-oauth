@@ -12,6 +12,9 @@ import (
 	digiconfig "github.com/holyhope/digiposte-oauth/config"
 )
 
+const OTPQueryParam = "otp_secret"
+
+// AccessGenerator is an oauth2.AccessGenerate that uses a LoginMethod to generate the access token.
 type AccessGenerator struct {
 	setter digiconfig.Setter
 	login  LoginMethod
@@ -33,7 +36,7 @@ func (ag *AccessGenerator) Token(
 	creds := &Credentials{
 		Username:  generateBasic.Client.GetID(),
 		Password:  generateBasic.Client.GetSecret(),
-		OTPSecret: generateBasic.Request.Form.Get("otp_secret"),
+		OTPSecret: generateBasic.Request.Form.Get(OTPQueryParam),
 	}
 
 	if err := areCredentialsValid(creds); err != nil {

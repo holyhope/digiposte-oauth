@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-oauth2/oauth2/v4/server"
 	digipoauth "github.com/holyhope/digiposte-oauth"
 	digiconfig "github.com/holyhope/digiposte-oauth/config"
 	configfakes "github.com/holyhope/digiposte-oauth/config/configfakes"
@@ -23,10 +24,10 @@ const (
 
 var _ = Describe("Server", func() {
 	var (
-		setter     *configfakes.FakeSetter
-		server     *digipoauth.Server
-		testServer *ghttp.Server
-		cfg        *oauth2.Config
+		setter      *configfakes.FakeSetter
+		oauthServer *digipoauth.Server
+		testServer  *ghttp.Server
+		cfg         *oauth2.Config
 	)
 
 	BeforeEach(func() {
@@ -56,9 +57,12 @@ var _ = Describe("Server", func() {
 
 		localServer, err := digipoauth.NewServer(
 			setter,
-			"", // Random port
-			digipoauth.LoginMethodFunc(loginMethod),
-			log.New(GinkgoWriter, "", log.Lmsgprefix),
+			&digipoauth.Config{
+				Addr:        ":0", // Random port
+				Server:      server.NewConfig(),
+				Logger:      log.New(GinkgoWriter, "", log.Lmsgprefix),
+				LoginMethod: digipoauth.LoginMethodFunc(loginMethod),
+			},
 		)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(localServer).ToNot(BeNil())
@@ -72,17 +76,17 @@ var _ = Describe("Server", func() {
 		}(localServer)
 
 		DeferCleanup(func() {
-			Expect(server.Shutdown(context.Background())).To(Succeed())
+			Expect(oauthServer.Shutdown(context.Background())).To(Succeed())
 		})
 
-		server = localServer
+		oauthServer = localServer
 
 		cfg = &oauth2.Config{
 			ClientID:     ClientID,
 			ClientSecret: ClientSecret,
 			Endpoint: oauth2.Endpoint{
-				AuthURL:       server.AuthorizeURL(),
-				TokenURL:      server.TokenURL(),
+				AuthURL:       oauthServer.AuthorizeURL(),
+				TokenURL:      oauthServer.TokenURL(),
 				AuthStyle:     oauth2.AuthStyleInParams,
 				DeviceAuthURL: "",
 			},
