@@ -38,20 +38,27 @@ type Server struct {
 	clientStore *store.ClientStore
 }
 
+type Config struct {
+	Addr        string
+	Server      *server.Config
+	LoginMethod LoginMethod
+	Logger      *log.Logger
+}
+
 // StartServer starts a local webserver to receive the auth.
-func NewServer(setter digiconfig.Setter, addr string, loginMethod LoginMethod, logger *log.Logger) (*Server, error) {
+func NewServer(setter digiconfig.Setter, config *Config) (*Server, error) {
 	// client memory store
 	clientStore := store.NewClientStore()
 
-	manager := newManager(clientStore, setter, loginMethod)
+	manager := newManager(clientStore, setter, config.LoginMethod)
 
-	listener, err := net.Listen("tcp", addr)
+	listener, err := net.Listen("tcp", config.Addr)
 	if err != nil {
 		return nil, fmt.Errorf("listen: %w", err)
 	}
 
 	return &Server{
-		server:      newServer(manager, listener, logger),
+		server:      newServer(manager, config.Server, listener, config.Logger),
 		listener:    listener,
 		manager:     manager,
 		clientStore: clientStore,
@@ -73,9 +80,9 @@ func (s *Server) RegisterUser(clientID, clientSecret, redirectURL string) error 
 	return nil
 }
 
-func newServer(manager oauth2.Manager, listener net.Listener, logger *log.Logger) *http.Server {
+func newServer(manager oauth2.Manager, config *server.Config, listener net.Listener, logger *log.Logger) *http.Server {
 	mux := http.NewServeMux()
-	oauthServer := server.NewDefaultServer(manager)
+	oauthServer := server.NewServer(config, manager)
 
 	mux.HandleFunc(AuthorizePath, func(w http.ResponseWriter, r *http.Request) {
 		if err := oauthServer.HandleAuthorizeRequest(w, r); err != nil {
