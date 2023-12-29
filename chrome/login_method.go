@@ -58,6 +58,10 @@ func (c *chromeMethod) Login(ctx context.Context, creds *digioauth.Credentials) 
 	return chrome.login(ctx, independentChromeCtx, creds)
 }
 
+func (c *chromeMethod) String() string {
+	return "chrome"
+}
+
 const (
 	// DefaultRefreshFrequency is the default refresh frequency for the login process.
 	DefaultRefreshFrequency = 1500 * time.Millisecond
