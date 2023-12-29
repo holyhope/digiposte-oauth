@@ -23,10 +23,6 @@ func (s *otpScreen) String() string {
 }
 
 func (s *otpScreen) CurrentPageMatches(ctx context.Context) bool {
-	if s.Secret == "" {
-		return false
-	}
-
 	var nodeIDs []cdp.NodeID
 
 	if err := chromedp.Run(ctx,
@@ -40,7 +36,13 @@ func (s *otpScreen) CurrentPageMatches(ctx context.Context) bool {
 	return len(nodeIDs) > 0
 }
 
+var errEmptyOTP = fmt.Errorf("empty OTP secret")
+
 func (s *otpScreen) Do(ctx context.Context) error {
+	if s.Secret == "" {
+		return errEmptyOTP
+	}
+
 	otpKey, err := otp.NewKeyFromURL(s.Secret)
 	if err != nil {
 		return fmt.Errorf("parse secret: %w", err)
